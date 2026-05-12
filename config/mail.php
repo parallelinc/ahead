@@ -14,7 +14,7 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', 'log'),
+    'default' => env('MAIL_MAILER', 'cloudflare'),
 
     /*
     |--------------------------------------------------------------------------
@@ -68,6 +68,10 @@ return [
         'sendmail' => [
             'transport' => 'sendmail',
             'path' => env('MAIL_SENDMAIL_PATH', '/usr/sbin/sendmail -bs -i'),
+        ],
+
+        'cloudflare' => [
+            'transport' => 'cloudflare',
         ],
 
         'log' => [
