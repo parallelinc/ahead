@@ -29,8 +29,8 @@ return [
     ],
 
     'cloudflare' => [
-        'account_id' => env('CLOUDFLARE_ACCOUNT_ID'),
-        'key' => env('CLOUDFLARE_KEY'),
+        'account_id' => env('CLOUDFLARE_MAIL_ACCOUNT_ID'),
+        'key' => env('CLOUDFLARE_MAIL_KEY'),
     ],
 
     'slack' => [
