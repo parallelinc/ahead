@@ -1,11 +1,21 @@
 {
-    "mcpServers": {
-        "laravel-boost": {
-            "command": "php",
-            "args": [
-                "artisan",
-                "boost:mcp"
-            ]
-        }
+    "mcpServers":{
+       "laravel-boost":{
+          "command":"php",
+          "args":[
+             "artisan",
+             "boost:mcp"
+          ]
+       },
+       "cloudflare-docs":{
+          "url":"https://docs.mcp.cloudflare.com/mcp"
+       },
+       "shadcn-vue":{
+          "command":"npx",
+          "args":[
+             "shadcn-vue@latest",
+             "mcp"
+          ]
+       }
     }
-}
+ }

@@ -1,0 +1,20 @@
+---
+alwaysApply: true
+---
+
+## Component source
+
+Use **shadcn-vue** as the primary source for UI components. Before implementing any UI element (buttons, dialogs, forms, empty states, etc.), check whether shadcn-vue provides an equivalent in `resources/js/components/ui` or in the shadcn-vue library. If an equivalent exists, use it; do not create a custom component that duplicates its behavior. This is one of the most important rules for frontend work.
+
+- **Installed components**: Installed shadcn-vue components live under `resources/js/components/ui`. If the shadcn CLI prompts to overwrite an existing component, answer **no**; existing components may contain project-specific customizations.
+- **Discovery**: Prefer the shadcn-vue LLM doc at `https://www.shadcn-vue.com/llms.txt`. If needed, use the GitHub MCP server to search the repository `unovue/shadcn-vue`. Use the LLM doc first to reduce token usage.
+
+## Generated types and data (resources/js/types/data.ts)
+
+- **Do not edit `resources/js/types/data.ts`**. This file is generated from Spatie Laravel Data DTOs. Edits will be overwritten on the next run of `php artisan typescript:transform`.
+- **To change types**: Update the corresponding DTO in the backend (e.g. under `App\Data\...`), then run `php artisan typescript:transform` to regenerate the TypeScript types. These types are often referred to as "DTOs" in conversation.
+- **Naming**: The application configures `spatie/laravel-data` to use the snake_case mapper for input/output. Define DTO properties in **camelCase** in PHP; the generated TypeScript types and the data exposed to the frontend and database will use **snake_case**.
+
+## Terminology
+
+If the user refers to "shadcn-view" or similar variants, treat it as **shadcn-vue**.

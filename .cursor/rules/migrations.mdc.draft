@@ -1,0 +1,21 @@
+---
+alwaysApply: true
+---
+
+## Never edit old migrations
+
+Migrations in the `database/migrations` directory are treated as immutable. Assume every existing migration has already been run in at least one environment; editing an existing migration file will not change the database state because Laravel does not re-run completed migrations.
+
+- **Schema changes**: Create a new migration file (e.g. via `php artisan make:migration`) for any schema change. Do not edit, rename, or delete existing migration files.
+- **New columns**: When adding columns in a new migration, use `->after('column_name')` so the new column is placed in a logical order. New columns must not be placed after `created_at` or `updated_at`; those two columns must remain the last columns in the table.
+
+## Never Fresh
+
+**NEVER run migrations with `--fresh` or `--force`.** These options drop all tables and destroy all data. You are strictly forbidden from running:
+
+- `php artisan migrate:fresh`
+- `php artisan migrate --fresh`
+- `php artisan migrate --force`
+- Any equivalent command that drops or recreates the database
+
+Use `php artisan migrate` (without `--fresh` or `--force`) when running migrations. If you need to reset the database, ask the user to do it explicitly themselves.
