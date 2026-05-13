@@ -1,23 +1,23 @@
 <script setup lang="ts">
-import { Eye, EyeOff } from 'lucide-vue-next';
-import { ref, useTemplateRef } from 'vue';
-import type { HTMLAttributes } from 'vue';
-import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+    import { Input } from '@/components/ui/input';
+    import { cn } from '@/lib/utils';
+    import { Eye, EyeOff } from 'lucide-vue-next';
+    import type { HTMLAttributes } from 'vue';
+    import { ref, useTemplateRef } from 'vue';
 
-defineOptions({ inheritAttrs: false });
+    defineOptions({ inheritAttrs: false });
 
-const props = defineProps<{
-    class?: HTMLAttributes['class'];
-}>();
+    const props = defineProps<{
+        class?: HTMLAttributes['class'];
+    }>();
 
-const showPassword = ref(false);
-const inputRef = useTemplateRef('inputRef');
+    const showPassword = ref(false);
+    const inputRef = useTemplateRef('inputRef');
 
-defineExpose({
-    $el: inputRef,
-    focus: () => inputRef.value?.$el?.focus(),
-});
+    defineExpose({
+        $el: inputRef,
+        focus: () => inputRef.value?.$el?.focus(),
+    });
 </script>
 
 <template>
@@ -26,8 +26,7 @@ defineExpose({
             ref="inputRef"
             :type="showPassword ? 'text' : 'password'"
             :class="cn('pr-10', props.class)"
-            v-bind="$attrs"
-        />
+            v-bind="$attrs" />
         <button
             type="button"
             @click="showPassword = !showPassword"
@@ -37,8 +36,7 @@ defineExpose({
                 )
             "
             :aria-label="showPassword ? 'Hide password' : 'Show password'"
-            :tabindex="-1"
-        >
+            :tabindex="-1">
             <EyeOff v-if="showPassword" class="size-4" />
             <Eye v-else class="size-4" />
         </button>

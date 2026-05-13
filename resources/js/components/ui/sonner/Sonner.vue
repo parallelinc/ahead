@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { useAppearance } from '@/composables/useAppearance';
-import { Toaster as SonnerPrimitive } from 'vue-sonner';
-import 'vue-sonner/style.css';
+    import { useAppearance } from '@/composables/useAppearance';
+    import { Toaster as SonnerPrimitive } from 'vue-sonner';
+    import 'vue-sonner/style.css';
 
-const { appearance } = useAppearance();
+    const { appearance } = useAppearance();
 </script>
 
 <template>
@@ -15,6 +15,5 @@ const { appearance } = useAppearance();
             '--normal-bg': 'var(--popover)',
             '--normal-text': 'var(--popover-foreground)',
             '--normal-border': 'var(--border)',
-        }"
-    />
+        }" />
 </template>
