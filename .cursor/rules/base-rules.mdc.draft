@@ -6,11 +6,11 @@ alwaysApply: true
 
 # Application Information
 
-This application is called LaunchIT. It is a Laravel/InertiaJS/Vue website aimed at helping businesses deploy their applications more easily. LaunchIT allows businesses to configure databases, queues, caches, storages (s3 buckets), and compute (Lambda or ECS). LaunchIT abstracts all of the complex AWS interaction away from the business using terraform. The user's applications are deployed to a LaunchIT owned AWS account. What makes LaunchIT special is its serverless-only approach, and major emphasis on SOC II compliance. LaunchIT also acts as an OAuth proxy - users can deploy their application via LaunchIT and offload the authentication to us, because all of the traffic gets proxied via LaunchIT.
+This application is called Ahead. It is a Laravel/InertiaJS/Vue accounting platform for closing books: team-scoped bank feeds, receipts, invoices, first-party vendor normalization, transaction categorization, reconciliation, manual review, and close periods. Ahead centralizes data from systems such as Mercury, Ramp, Brex, Stripe, email providers, and vendor invoice APIs; normalizes that data into first-party accounting entities; applies consistent AI-assisted decisions; preserves human overrides; and keeps an auditable chain of custody for financial records.
 
 ## Design standards
 
-See `documentation/design-style.md` for detailed design style requirements.
+Follow the existing design system and UI patterns in the repository. See `docs/scope.md` for product behavior, accounting domain rules, compliance requirements, and non-goals.
 
 ## Documentation
 
@@ -18,29 +18,27 @@ Let's get to know the product a bit better.
 
 ### Core concepts
 
-The application allows users to create teams, so they can collaboratively work within their organization. Each team can have multiple projects. Each project represents a business's SaaS application essentially. Inside each project, the user configures resources. The resource types currently available are compute, cache, database, queue, and storage. The user can create environments (i.e., production, development). Each environment will have the same resources as each other, however the resource parameters can be customized per environment. For example, assume a user creates a production environment with two databases (application-db and logging-db). If they then create a development environment afterwards, LaunchIT will automatically provision those two databases to the development environment. Each environment must have the same resources (in this example, each environment must have an application-db and a logging-db), but the user can customize the configuration (such as vCPU, memory, etc.) per environment so they can scale up their production environment and scale down their development environment.
+The application allows users to belong to teams and work within an active team. All accounting data belongs to a team: bank connections, bank accounts, bank feed transactions, first-party vendors, external vendor mappings, contacts, Stripe customers, invoices, receipts, documents, chart accounts, categorization rules, AI runs, manual review items, reconciliation sessions, close periods, audit logs, and integration credentials. No team should be able to access or infer another team's accounting data.
 
 ## Detailed product description
 
-LaunchIT enables teams to define and operate application infrastructure in a serverless-first way with strong SOC II alignment. Users work within Teams, which own Projects. Each Project has Environments (e.g., Production, Staging). For every Environment, LaunchIT keeps the same set of Resources in sync (Databases, Caches, Queues, Storage, Compute), while allowing environment-specific configuration (e.g., PROD larger instances, DEV smaller).
+Ahead enables teams to close books accurately and consistently by making the application the source of truth for accounting categorization, vendor identity, contacts, bank feed records, receipts, invoices, reconciliation state, and close state. External systems are data sources and optional downstream sync targets, not the canonical accounting model.
 
-Resource configuration is versioned. Changes create a draft configuration; deployments snapshot drafts into immutable deployed configurations. This yields an auditable history and safety against accidental drift.
+Every automated or human accounting decision must be explainable, auditable, reversible, and backed by immutable history. Mutable summary columns may exist for UI or query performance, but categorization, matching, vendor mapping, AI suggestions, integration events, source documents, reconciliation state, and close state need append-only or historical records as the source of truth.
 
 ### Architecture & conventions (Backend)
 
 - Strict typing: `declare(strict_types=1);`, final classes where appropriate, typed properties, enums for fixed sets, and DTOs for all inputs/configuration.
 - DTOs with Spatie Laravel Data:
   - Request DTOs perform validation with attributes (`Min`, `Max`, `RequiredIf`, `LessThan`, `GreaterThan`, etc.).
-  - Configuration DTOs are polymorphic: a `provider` enum drives `PropertyMorphableData::morph()` to select a concrete configuration class (e.g., `CacheConfigurationData` → `ServerlessElastiCacheConfigurationData` or `ElastiCacheClusterConfigurationData`).
+  - Configuration DTOs are polymorphic where provider-specific configuration exists: a `provider` enum drives `PropertyMorphableData::morph()` to select a concrete configuration class (e.g., an integration configuration DTO for Stripe, Mercury, Ramp, Brex, Outlook, Google/Gmail, or AWS billing).
   - All DTOs and enums are annotated with `#[TypeScript]` to emit frontend TypeScript types.
-- Versioned configurations (foundational pattern):
-  - Resource models implement `VersionedConfigurationContract` and use the `HasVersionedConfigurations` trait.
-  - Configuration is stored in `VersionedConfiguration` rows as an ArrayObject. The model exposes a `configuration` Attribute:
-    - Getter resolves the active configuration DTO (draft if present; otherwise last deployed for the Environment).
-    - Setter writes/updates a draft configuration. Once deployed (`first_deployment_id` set), immutability is enforced.
-  - Type-safety is enforced by resolving the correct `*ConfigurationDataInterface` for the model’s `$data` class via `getVersionedConfigurationDataInterface()`; a build-time class→interface map is generated on `config:cache`/`optimize`.
+- Versioned or historical data (foundational pattern):
+  - For accounting decisions and integration state, prefer append-only or versioned records over overwriting the only copy of a value.
+  - Current-state columns may exist for performance, but they must be derivable from history when `docs/scope.md` requires auditability.
+  - Type-safety is enforced through the correct DTO/interface for the domain model and provider-specific data.
 - IDs and schema: Use NanoIDs (`HasNanoids`) and migration macros `nanoid` / `nanoidMorphs` for string IDs and morphs.
-- Controllers: public methods must only be `index`, `show`, `create`, `store`, `edit`, `update`, or `destroy`. If an action does not fit those six methods, use an invocable controller (e.g. `FavoriteBlogPostController` for favoriting a post, not a `favorite` method on `BlogPostController`). Controllers accept typed request DTOs; select the correct configuration via a `match ($request->provider) { ... }`. When creating a Group, instantiate one resource per Environment to keep inventories in sync across environments.
+- Controllers: public methods must only be `index`, `show`, `create`, `store`, `edit`, `update`, or `destroy`. If an action does not fit those six methods, use an invocable controller (e.g. `ApproveCategorizationSuggestionController` for approving a suggestion, not an `approve` method on `CategorizationSuggestionController`). Controllers accept typed request DTOs; select provider-specific configuration via a `match ($request->provider) { ... }` where applicable.
 - Request validation: do not create Form Request classes. Use Spatie Laravel Data DTOs for all request input and validation (with attributes such as `Min`, `Max`, `RequiredIf`); controllers receive typed DTOs, not Form Requests.
 - Policies & middleware: `IsTeamMember`/`IsTeamOnboarded` enforce team access and onboarding. **Do not use the route `->can()` middleware**; perform authorization inside controllers via `Gate::authorize()`.
 - CSP & assets: Vite CSP nonces are enabled; a CSP header with a per-request nonce is set; see `AddContentSecurityPolicyHeaders` and `LaravelViteNonceGenerator`.
@@ -50,25 +48,25 @@ Resource configuration is versioned. Changes create a draft configuration; deplo
 
 All API routes live under the `app/Http/Controllers/Api` directory and **must** be documented with Scramble for OpenAPI generation. Every API controller and its public methods must have the Scramble annotations described below. Annotate them consistently so generated docs and clients stay accurate.
 
-- **Controllers in `app/Http/Controllers/Api/`**: For each API controller, add a **class-level docblock** with a short **title** (one line) and a **description** (one or more sentences). Use `#[Group('…')]` (e.g. `#[Group('Projects')]`) to group endpoints in the docs. For each public method (index, show, store, etc.), add a **method-level docblock** with a short **title**, a **description**, and **`@operationId`** (e.g. `@operationId listProjects`). Use docblocks for title/description; you do not need separate Scramble attributes for those. Keep descriptions **concise**: state what the endpoint returns or does (e.g. "Returns all projects for the given team."). Do not write pseudo-documentation—avoid spelling out auth rules, permissions, or obvious behavior in the description; those belong in policies and code, not in the one-line summary.
-- **Request DTOs used by API controllers**: For every controller request DTO that is used by a controller in the `app/Http/Controllers/Api` directory (e.g. `StoreProjectRequestData`), add PHPDoc on each property: a short **description** and, where helpful, **`@example`** for sample values. If a property has a **default**, document it with **`@default`** in the docblock (e.g. `@default us-east-1`). This keeps request bodies and examples correct in Scramble/OpenAPI.
+- **Controllers in `app/Http/Controllers/Api/`**: For each API controller, add a **class-level docblock** with a short **title** (one line) and a **description** (one or more sentences). Use `#[Group('…')]` (e.g. `#[Group('Vendors')]`) to group endpoints in the docs. For each public method (index, show, store, etc.), add a **method-level docblock** with a short **title**, a **description**, and **`@operationId`** (e.g. `@operationId listVendors`). Use docblocks for title/description; you do not need separate Scramble attributes for those. Keep descriptions **concise**: state what the endpoint returns or does (e.g. "Returns all vendors for the active team."). Do not write pseudo-documentation—avoid spelling out auth rules, permissions, or obvious behavior in the description; those belong in policies and code, not in the one-line summary.
+- **Request DTOs used by API controllers**: For every controller request DTO that is used by a controller in the `app/Http/Controllers/Api` directory (e.g. `StoreVendorRequestData`), add PHPDoc on each property: a short **description** and, where helpful, **`@example`** for sample values. If a property has a **default**, document it with **`@default`** in the docblock. This keeps request bodies and examples correct in Scramble/OpenAPI.
 
 Moving forward, when adding or changing API endpoints or their request bodies, add or update these annotations so the API docs stay in sync.
 
 ### MCP (Model Context Protocol)
 
-We expose a **web** MCP server so AI clients can perform many of the same operations as the REST API. The MCP server should maintain **high parity with the API**: when the API can list, show, or create a resource, the MCP server should expose tools (or prompts/resources) that do the same, using the same authorization and data shapes.
+We expose a **web** MCP server so AI clients can perform many of the same operations as the REST API. The MCP server should maintain **high parity with the API**: when the API can list, show, or create a domain entity, the MCP server should expose tools (or prompts/resources) that do the same, using the same authorization and data shapes.
 
 - **Documentation**: Laravel MCP is new; always use the official docs for implementation details: **https://laravel.com/docs/12.x/mcp**. When in doubt, use the Laravel Boost MCP server or GitHub MCP server or similar to read the Laravel MCP documentation so behavior matches the current package.
 - **Web server only**: Register MCP servers with `Mcp::web(...)` in `routes/ai.php` (not `Mcp::local(...)`). Apply the same middleware as the API (e.g. `auth:api`, `onboarded-team`) so MCP uses the same authentication and authorization.
 - **When adding or editing features**: If a new feature is exposed via the API, consider exposing it via MCP as well. If needed, create a new MCP web server; then add or edit **tools** (for actions), **prompts** (for templates), **resources** (for readable context), and **metadata** as appropriate. Reuse the same policies, DTOs, and actions as the API so behavior and response shapes stay in sync.
 - **Tool conventions**:
-  - **Input schema**: Always define an input schema when the tool accepts parameters (use the `schema()` method). If the tool has no user-provided input (e.g. team/project come from auth context), return an empty array.
+  - **Input schema**: Always define an input schema when the tool accepts parameters (use the `schema()` method). If the tool has no user-provided input (e.g. team context comes from auth context), return an empty array.
   - **Output schema**: Always define an output schema (use the `outputSchema()` method) so AI clients know the structure of the response.
   - **Validation via DTOs**: Do not duplicate validation in tools. Use the same request DTOs as the API: create the DTO from the tool payload with `YourRequestData::validateAndCreate($request->all())`. This keeps validation in one place and preserves parity with the API. Catch `ValidationException` and return `Response::error(ValidationMessages::from($e))`.
-  - **Tool annotations**: Always apply the four tool annotations where they apply: `#[IsReadOnly]` (true for read-only tools, false for create/update/delete), `#[IsDestructive]` (true only when the tool may perform destructive updates), `#[IsIdempotent]` (true when repeated calls with same args have no additional effect), `#[IsOpenWorld]` (true when the tool may interact with external entities; usually false for app-internal tools). Use the `Name` and `Title` attributes (e.g. `#[Name('list-projects')]`, `#[Title('List Projects')]`) so tools have stable, readable identifiers.
-  - **Testing**: Every MCP tool **must** have feature tests. **Before writing MCP tests, review the Laravel MCP documentation** at https://laravel.com/docs/12.x/mcp#testing-servers for correct use of `Server::tool()`, `actingAs()`, and assertion methods (`assertOk`, `assertSee`, `assertHasErrors`, etc.). Use `Server::actingAs($user)->tool(ToolClass::class, $arguments)` to invoke tools. Test happy paths (authenticated user with correct context), error paths (unauthenticated, missing team/project context, validation failures), and authorization (user not on team, forbidden). See `tests/Feature/Mcp/LaunchITServerToolsTest.php` for examples. Tools that use `request()->user()` or `request()->attributes` require binding a Laravel HTTP `Request` with `setUserResolver` and `attributes` in tests, since MCP unit tests bypass the HTTP stack.
-  - **Team and project context**: Do not require the MCP client to pass `team_id` or `project_id` in tool parameters. Resolve team and project from the authentication context (e.g. `request()->attributes->get('team')`, `request()->attributes->get('project')`, or the authenticated user’s teams). When auth is not yet implemented, use a sensible fallback (e.g. user’s first team) or return a clear error that context will be provided by authentication.
+  - **Tool annotations**: Always apply the four tool annotations where they apply: `#[IsReadOnly]` (true for read-only tools, false for create/update/delete), `#[IsDestructive]` (true only when the tool may perform destructive updates), `#[IsIdempotent]` (true when repeated calls with same args have no additional effect), `#[IsOpenWorld]` (true when the tool may interact with external entities; usually false for app-internal tools). Use the `Name` and `Title` attributes (e.g. `#[Name('list-vendors')]`, `#[Title('List Vendors')]`) so tools have stable, readable identifiers.
+  - **Testing**: Every MCP tool **must** have feature tests. **Before writing MCP tests, review the Laravel MCP documentation** at https://laravel.com/docs/12.x/mcp#testing-servers for correct use of `Server::tool()`, `actingAs()`, and assertion methods (`assertOk`, `assertSee`, `assertHasErrors`, etc.). Use `Server::actingAs($user)->tool(ToolClass::class, $arguments)` to invoke tools. Test happy paths (authenticated user with correct context), error paths (unauthenticated, missing team context, validation failures), and authorization (user not on team, forbidden). Tools that use `request()->user()` or `request()->attributes` require binding a Laravel HTTP `Request` with `setUserResolver` and `attributes` in tests, since MCP unit tests bypass the HTTP stack.
+  - **Team context**: Do not require the MCP client to pass `team_id` in tool parameters. Resolve team from the authentication context (e.g. `request()->attributes->get('team')`, the active team, or the authenticated user’s teams). When auth is not yet implemented, use a sensible fallback (e.g. user’s first team) or return a clear error that context will be provided by authentication.
 
 ### Architecture & conventions (Frontend)
 
@@ -79,29 +77,33 @@ We expose a **web** MCP server so AI clients can perform many of the same operat
 - Destructive UI actions (delete/remove/archive) must use `shadcn-vue` `AlertDialog` for confirmation. Do not use browser-native confirmation dialogs like `window.confirm`.
 - External redirects (e.g. to an OAuth provider) must use `Inertia::location($url)` and return that response. Do not use `redirect()->away($url)`. Inertia requires the 409 response with `X-Inertia-Location` so the client can perform a full page navigation; using a normal redirect breaks the Inertia flow.
 
-### How to add a new Resource provider (summary)
+### How to add a new integration provider (summary)
 
-1. Add a new provider case to the relevant enum (e.g., `CacheProviderEnum`).
+1. Add a new provider case to the relevant enum (e.g., an integration provider enum).
 2. Create a concrete configuration DTO with `#[TypeScript]` and validation rules.
 3. Update the base `*ConfigurationData::morph()` to map the provider to the concrete DTO.
 4. Update the controller `store()` `match` to select the proper DTO from the request.
 5. Ensure the versioned configuration interface map is regenerated (automatically run on `config:cache`/`optimize`).
-6. Wire up Terraform integration where applicable.
+6. Wire up the provider driver, capability flags, sync cursors, raw payload storage, retry behavior, and audit logging where applicable.
 
 ### Models overview
 
-- Team: billing/collaboration unit (Cashier customer), owner, users, projects.
-- Project: belongs to Team; dispatches `ProjectCreated` to create default Environments; owns resource Groups and instances.
-- Environment: belongs to Project; holds Deployments; all resource instances are environment-scoped.
-- Deployment: per-Environment; tracks deployment lifecycle and ties to versioned configurations.
-- Resource families: each has a Group model and an instance model (e.g., `CacheGroup`/`Cache`, `DatabaseGroup`/`Database`, `QueueGroup`/`Queue`, `StorageGroup`/`Storage`, `ComputeGroup`/`Compute`). Instances implement `VersionedConfigurationContract` and expose a typed `configuration` attribute.
-- VersionedConfiguration: stores `configuration` (ArrayObject) plus `first_deployment_id` and `last_deployment_id`; immutable after first deployment.
-- DTO namespaces: `App\Data\{Domain}` contain request and configuration DTOs; base configuration DTOs implement the correct `*ConfigurationDataInterface` and use morphing based on a `provider` enum.
+- Team: collaboration and tenancy boundary. Accounting data belongs to a team.
+- User and team membership: authentication, authorization, active team selection, and actor attribution.
+- Bank connections, bank accounts, and bank feed transactions: imported financial activity and provider metadata.
+- Vendors and external vendor mappings: first-party vendor identity and provider-specific aliases/mappings.
+- Contacts and external contact mappings: customers, payers, and counterparties.
+- Chart accounts, categorization suggestions, categorization assignments, categorization history, and categorization rules: team-owned accounting treatment with immutable lineage.
+- Documents, receipts, invoices, invoice line items, transaction matches, and match history: source evidence and matching workflows.
+- AI runs, model results, consensus runs, and consensus attempts: persisted AI inputs, outputs, confidence, provenance, and review state.
+- Sandbox operations and artifacts: Cloudflare Sandbox file operations and derived evidence.
+- Manual review items, reconciliation sessions, close periods, entity events, actor snapshots, and audit logs: review, close readiness, period lock state, and compliance history.
+- DTO namespaces: `App\Data\{Domain}` contain request and configuration DTOs; base configuration DTOs implement the correct `*ConfigurationDataInterface` and use morphing based on a `provider` enum when provider-specific data is needed.
 
-See `documentation/design-style.md` for coding patterns, validation guidance, and testing recommendations.
+See `docs/scope.md` for product behavior, compliance requirements, data-modeling guidance, and testing-sensitive areas.
 
-- **Domain and authorization errors**: For errors that should be trackable in logs and returned to API clients in a consistent format, use `App\Exceptions\ExceptionType` and `App\Exceptions\TrackableException`. See `documentation/trackable-exceptions.md`.
-- **Multi-step creation flows**: For resource wizards and multi-step creation flows (e.g. database, cache, queue, storage, compute), follow `documentation/multi-step-creation-flow.md`. Back navigation must be fully stateful: when a user returns to a previous step, every previously submitted value for that step must be prefilled from persisted flow state.
+- **Domain and authorization errors**: For errors that should be trackable in logs and returned to API clients in a consistent format, use `App\Exceptions\ExceptionType` and `App\Exceptions\TrackableException`. See `docs/trackable-exceptions.md`.
+- **Multi-step creation flows**: For multi-step workflows (e.g. connecting an integration, importing documents, resolving manual review items, reconciling accounts, or closing a period), back navigation must be fully stateful: when a user returns to a previous step, every previously submitted value for that step must be prefilled from persisted flow state.
 
 ### Other rules
 
@@ -115,14 +117,14 @@ See `documentation/design-style.md` for coding patterns, validation guidance, an
 
 # Instructions
 
-During your interaction with the user, if you find anything reusable in this application (e.g. version of a library, model name), especially about a fix to a mistake you made or a correction you received, you should take note in the `documentation/lessons.md` file so you will not make the same mistake again.
+During your interaction with the user, if you find anything reusable in this application (e.g. version of a library, model name), especially about a fix to a mistake you made or a correction you received, you should take note in the `docs/lessons.md` file so you will not make the same mistake again.
 
 # What to do when you are prompted with a task:
 
 ANYTIME YOU ARE PROVIDED A TASK, YOU MUST DO THE FOLLOWING:
 
-1. Run `ls` on the documentation directory to see available documentation files
-2. Read relevant documentation files from the documentation directory before starting any task
+1. Run `ls` on the docs directory to see available documentation files
+2. Read relevant documentation files from the docs directory before starting any task
 3. Identify the full requirements
 4. See if existing components/pages exist that are relevant
 
@@ -130,7 +132,7 @@ Return to user. Confirm the detailed requirements and explain what existing code
 
 Await confirmation. Once confirmation is received, proceed:
 
-5. Write pest tests BEFORE implementation (test driven design). I am looking for end-to-end testing: unit tests, feature tests, MCP tool tests (in `tests/Feature/Mcp/`), and critically Pest browser tests (in `tests/Browser`), as well as Regression tests. Use Pest 4's built-in browser testing (pestphp/pest-plugin-browser with Playwright), not Laravel Dusk. For authenticated browser tests, call `actingAs($user)` before `visit(...)` and generate protected route URLs with `route(..., absolute: false)` so the browser stays on the in-process Pest host/session. Use `visit($url)` for navigation and chain assertions (e.g. `assertSee`, `assertPresent`). You must keep mocked resources to a minimum. Rely on real interactions with AWS and other APIs, ignoring cost or performance implications. Again, ideally try to keep mocked services to a minimum, or to zero if possible. If I explicitly request that you do not write tests, you should not write or run any tests. If the user explicitly says not to run Browser tests for the current task, do not run Browser tests and focus on backend/feature/unit verification only. This application is extremely high security, high critical uptime reliability required. This application needs to meet FedRAMP eventually, and the applications that are hosted by this application are high compliance software. Therefore, testing is much, much more of a burden in this application than in other applications. Testing must be extremely thorough, especially when dealing with access controls. If, for example, we're working on a new controller, we must test all the different access controls, all the different roles, to ensure that the policies are thorough. If there are conditionals inside of controllers or any other piece of code that might be run, we need to ensure that we are testing every single branch case of that conditional. We cannot leave anything up to assumptions. We cannot leave anything that could cause a regression issue, we need to write tests for everything. I imagine that most of this application's code will be tests.
+5. Write pest tests BEFORE implementation (test driven design). I am looking for end-to-end testing: unit tests, feature tests, MCP tool tests (in `tests/Feature/Mcp/`), and critically Pest browser tests (in `tests/Browser`), as well as Regression tests. Use Pest 4's built-in browser testing (pestphp/pest-plugin-browser with Playwright), not Laravel Dusk. For authenticated browser tests, call `actingAs($user)` before `visit(...)` and generate protected route URLs with `route(..., absolute: false)` so the browser stays on the in-process Pest host/session. Use `visit($url)` for navigation and chain assertions (e.g. `assertSee`, `assertPresent`). You must keep mocked resources to a minimum. Rely on real interactions with Stripe, banking, email, AI, and other provider APIs, ignoring cost or performance implications. Again, ideally try to keep mocked services to a minimum, or to zero if possible. If I explicitly request that you do not write tests, you should not write or run any tests. If the user explicitly says not to run Browser tests for the current task, do not run Browser tests and focus on backend/feature/unit verification only. This application is a financial system with extremely high security, auditability, record-retention, and reliability requirements. Therefore, testing is much, much more of a burden in this application than in other applications. Testing must be extremely thorough, especially when dealing with access controls, team isolation, financial records, audit history, AI decisions, integration syncs, and close workflows. If, for example, we're working on a new controller, we must test all the different access controls, all the different roles, to ensure that the policies are thorough. If there are conditionals inside of controllers or any other piece of code that might be run, we need to ensure that we are testing every single branch case of that conditional. We cannot leave anything up to assumptions. We cannot leave anything that could cause a regression issue, we need to write tests for everything. I imagine that most of this application's code will be tests.
 
 Await confirmation. Explain how deeply things have been tested.
 
@@ -150,7 +152,7 @@ Await confirmation. Explain how deeply things have been tested.
 
 12. NEVER EVER EDIT THE `phpstan.neon` FILE - ESPECIALLY NOT TO ADD AN `ignoreErrors` property.
 
-13. Write documentation as you implement. Documentation must cover (1) how the code works internally, and (2) how a developer can use the code (e.g. for internal APIs, new features, or integrations). Place documentation in the appropriate files under `documentation/` or in docblocks as appropriate.
+13. Write documentation as you implement. Documentation must cover (1) how the code works internally, and (2) how a developer can use the code (e.g. for internal APIs, new features, or integrations). Place documentation in the appropriate files under `docs/` or in docblocks as appropriate.
 
 14. The application may offer many features as an API and as MCP server tools (Laravel MCP: https://laravel.com/docs/12.x/mcp). When building new features that the user requests, it may be evident that an API endpoint or MCP tool should be created for the feature. This will only be relevant in certain circumstances. When that is the case, include the API and MCP tasks as part of your plan for the user to review.
 
@@ -177,7 +179,7 @@ Await confirmation. Explain how deeply things have been tested.
 $user = request()->user(); // Always use `request()` not `$request`
 abort_if(is_null($user), 401);
 
-Gate::authorize('view', $project);  // or the appropriate ability and subject
+Gate::authorize('view', $bankTransaction);  // or the appropriate ability and subject
 ```
 
 ### Policies
@@ -190,10 +192,10 @@ Gate::authorize('view', $project);  // or the appropriate ability and subject
 
 ### Spatie queued actions
 
-- Prefer the **Spatie Laravel Queueable Action** package for units of business logic. Put logic in actions (e.g. `CreateProjectAction`) and call them from both web controllers and API controllers. That way you avoid duplicating logic between web and API. When adding or changing features that involve non-trivial logic, consider introducing or updating an action so that web and API can share the same code path.
+- Prefer the **Spatie Laravel Queueable Action** package for units of business logic. Put logic in actions (e.g. `CategorizeTransactionAction`) and call them from both web controllers and API controllers. That way you avoid duplicating logic between web and API. When adding or changing features that involve non-trivial logic, consider introducing or updating an action so that web and API can share the same code path.
 
 ### Webhooks (spatie/laravel-webhook-server)
 
 - Users can subscribe to webhooks for events (created, updated, deleted, state changes, etc.). Webhook dispatch should typically go **hand in hand with activity logging**: when we log an action, consider dispatching webhooks to subscribers.
 - **Type**: Every webhook payload must include a **`type`** key so subscribers can identify the event. Use `App\Enums\Webhook\WebhookTypeEnum`; add new cases when introducing new webhook events so we keep a single, trackable library of types.
-- **Payloads**: All webhook payloads are DTOs under `App\Data\Webhook\`, extending `BaseWebhookPayloadData` (which guarantees `type`). Use concrete payload classes per resource (e.g. `ProjectWebhookPayloadData`) and pass the payload DTO’s `->toArray()` to `WebhookCall::create()->payload(...)`. See `documentation/webhooks.md`.
+- **Payloads**: All webhook payloads are DTOs under `App\Data\Webhook\`, extending `BaseWebhookPayloadData` (which guarantees `type`). Use concrete payload classes per resource (e.g. `VendorWebhookPayloadData`) and pass the payload DTO’s `->toArray()` to `WebhookCall::create()->payload(...)`. See `docs/webhooks.md`.
