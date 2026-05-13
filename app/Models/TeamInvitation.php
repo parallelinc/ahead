@@ -1,10 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\TeamRole;
+use Carbon\CarbonImmutable;
 use Database\Factories\TeamInvitationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,12 +21,13 @@ use Illuminate\Support\Str;
  * @property string $email
  * @property TeamRole $role
  * @property int $invited_by
- * @property \Carbon\CarbonImmutable|null $expires_at
- * @property \Carbon\CarbonImmutable|null $accepted_at
- * @property \Carbon\CarbonImmutable|null $created_at
- * @property \Carbon\CarbonImmutable|null $updated_at
- * @property-read \App\Models\User $inviter
- * @property-read \App\Models\Team|null $team
+ * @property CarbonImmutable|null $expires_at
+ * @property CarbonImmutable|null $accepted_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
+ * @property-read User $inviter
+ * @property-read Team|null $team
+ *
  * @method static \Database\Factories\TeamInvitationFactory factory($count = null, $state = [])
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TeamInvitation newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TeamInvitation newQuery()
@@ -37,26 +42,29 @@ use Illuminate\Support\Str;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TeamInvitation whereRole($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TeamInvitation whereTeamId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TeamInvitation whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 #[Fillable(['team_id', 'email', 'role', 'invited_by', 'expires_at', 'accepted_at'])]
-class TeamInvitation extends Model
+final class TeamInvitation extends Model
 {
     /** @use HasFactory<TeamInvitationFactory> */
     use HasFactory;
 
-    /**
-     * Bootstrap the model and its traits.
-     */
-    protected static function boot(): void
-    {
-        parent::boot();
+    use HasUuids;
 
-        static::creating(function (TeamInvitation $invitation) {
-            if (empty($invitation->code)) {
-                $invitation->code = Str::random(64);
-            }
-        });
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'role' => TeamRole::class,
+            'expires_at' => 'datetime',
+            'accepted_at' => 'datetime',
+        ];
     }
 
     /**
@@ -104,24 +112,24 @@ class TeamInvitation extends Model
     }
 
     /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'role' => TeamRole::class,
-            'expires_at' => 'datetime',
-            'accepted_at' => 'datetime',
-        ];
-    }
-
-    /**
      * Get the route key for the model.
      */
     public function getRouteKeyName(): string
     {
         return 'code';
+    }
+
+    /**
+     * Bootstrap the model and its traits.
+     */
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        self::creating(function (TeamInvitation $invitation) {
+            if (empty($invitation->code)) {
+                $invitation->code = Str::random(64);
+            }
+        });
     }
 }

@@ -1,11 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Concerns\GeneratesUniqueTeamSlugs;
 use App\Enums\TeamRole;
+use Carbon\CarbonImmutable;
 use Database\Factories\TeamFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -17,16 +22,17 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $name
  * @property string $slug
  * @property bool $is_personal
- * @property \Carbon\CarbonImmutable|null $created_at
- * @property \Carbon\CarbonImmutable|null $updated_at
- * @property \Carbon\CarbonImmutable|null $deleted_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\TeamInvitation> $invitations
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
+ * @property CarbonImmutable|null $deleted_at
+ * @property-read Collection<int, TeamInvitation> $invitations
  * @property-read int|null $invitations_count
- * @property-read \App\Models\Membership|null $pivot
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\User> $members
+ * @property-read Membership|null $pivot
+ * @property-read Collection<int, User> $members
  * @property-read int|null $members_count
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Membership> $memberships
+ * @property-read Collection<int, Membership> $memberships
  * @property-read int|null $memberships_count
+ *
  * @method static \Database\Factories\TeamFactory factory($count = null, $state = [])
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Team newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Team newQuery()
@@ -41,32 +47,25 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Team whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Team withTrashed(bool $withTrashed = true)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Team withoutTrashed()
+ *
  * @mixin \Eloquent
  */
 #[Fillable(['name', 'slug', 'is_personal'])]
-class Team extends Model
+final class Team extends Model
 {
     /** @use HasFactory<TeamFactory> */
-    use GeneratesUniqueTeamSlugs, HasFactory, SoftDeletes;
+    use GeneratesUniqueTeamSlugs, HasFactory, HasUuids, SoftDeletes;
 
     /**
-     * Bootstrap the model and its traits.
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
      */
-    protected static function boot(): void
+    protected function casts(): array
     {
-        parent::boot();
-
-        static::creating(function (Team $team) {
-            if (empty($team->slug)) {
-                $team->slug = static::generateUniqueTeamSlug($team->name);
-            }
-        });
-
-        static::updating(function (Team $team) {
-            if ($team->isDirty('name')) {
-                $team->slug = static::generateUniqueTeamSlug($team->name, $team->id);
-            }
-        });
+        return [
+            'is_personal' => 'boolean',
+        ];
     }
 
     /**
@@ -113,22 +112,30 @@ class Team extends Model
     }
 
     /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'is_personal' => 'boolean',
-        ];
-    }
-
-    /**
      * Get the route key for the model.
      */
     public function getRouteKeyName(): string
     {
         return 'slug';
+    }
+
+    /**
+     * Bootstrap the model and its traits.
+     */
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        self::creating(function (Team $team) {
+            if (empty($team->slug)) {
+                $team->slug = static::generateUniqueTeamSlug($team->name);
+            }
+        });
+
+        self::updating(function (Team $team) {
+            if ($team->isDirty('name')) {
+                $team->slug = static::generateUniqueTeamSlug($team->name, $team->id);
+            }
+        });
     }
 }
