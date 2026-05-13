@@ -20,6 +20,7 @@
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1.14",
         "league/flysystem-aws-s3-v3": "^3.32",
+        "nunomaduro/essentials": "^1.2",
         "saloonphp/saloon": "^4.0",
         "spatie/laravel-activitylog": "^5.0",
         "spatie/laravel-csp": "^3.25",
