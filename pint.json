@@ -21,6 +21,7 @@
         "fully_qualified_strict_types": {
             "import_symbols": true
         },
+        "single_import_per_statement": true,
         "global_namespace_import": {
             "import_classes": true,
             "import_constants": true,
