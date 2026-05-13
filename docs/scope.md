@@ -35,6 +35,7 @@ The system must maintain chain of custody for:
 - Provider-imported documents.
 - Provider-imported transactions.
 - Provider raw payloads.
+- Cloudflare Sandbox file operations and derived artifacts.
 - AI inputs.
 - AI outputs.
 - AI consensus attempts.
@@ -64,6 +65,7 @@ Historical records must support:
 - Actor attribution.
 - Related AI run if applicable.
 - Related integration sync run if applicable.
+- Related Cloudflare Sandbox operation if applicable.
 - Related source document if applicable.
 - Created timestamp.
 - Superseded, voided, or reversed timestamp if applicable.
@@ -107,6 +109,41 @@ Required AI usage areas include:
 - Suggested vendor integration opportunities.
 
 The application must be designed so AI providers can be switched through the Laravel AI SDK without rewriting business logic. Provider-specific code must not leak into accounting domain services.
+
+## Unknown File Handling and Cloudflare Sandbox
+
+If the platform, an AI workflow, an integration, or a user action needs to download, upload, inspect, transform, extract, execute against, or otherwise manipulate unknown or untrusted files, that work must happen inside Cloudflare Sandbox.
+
+This is mandatory for unknown files because receipt, invoice, export, archive, spreadsheet, PDF, image, and provider-supplied files may contain unexpected content, malformed data, macros, scripts, embedded payloads, or adversarial input. The core Laravel application must not directly execute tooling against unknown files on the application host.
+
+Before implementing any Cloudflare Sandbox feature, the agent or engineer must use the Cloudflare MCP documentation search to read the current Cloudflare Sandbox documentation. Do not rely on model memory for Sandbox SDK syntax, lifecycle, file operations, storage mounts, Workers configuration, Durable Object bindings, Containers behavior, command execution, sessions, or security controls.
+
+The Cloudflare documentation currently describes Sandbox SDK as an isolated code execution environment built on Workers, Durable Objects, and Containers. It supports command execution, file operations such as reading and writing files, sessions, process management, code interpretation, and optional storage mounting. The implementation must still verify current behavior against Cloudflare documentation before coding.
+
+Cloudflare Sandbox must be used for:
+
+- Inspecting unknown PDFs, images, spreadsheets, CSV exports, ZIP archives, or provider-supplied files.
+- Converting files between formats.
+- Extracting text or metadata with third-party tools.
+- Running OCR or document-processing binaries.
+- Validating file structure.
+- Detecting malware indicators or suspicious file behavior if such scanning is implemented.
+- Running any command-line tool against a user-supplied, email-supplied, provider-supplied, or AI-supplied file.
+- Performing AI-adjacent file preparation that requires manipulating the file before sending it through the Laravel AI SDK.
+
+Sandbox file handling must preserve chain of custody:
+
+- Store the original source document outside the sandbox in durable application storage.
+- Store immutable file hashes before sandbox transfer.
+- Record when the file was sent to the sandbox.
+- Record the sandbox ID, session ID, operation type, command or API call, working directory, input file references, output file references, exit status, logs, and timestamps.
+- Store hashes and storage references for every derived output file.
+- Never overwrite the original document with a sandbox-produced derivative.
+- Link sandbox operations to the relevant document, AI run, integration sync run, manual review item, and audit log entry.
+
+Sandbox outputs must be treated as derived evidence, not as replacements for source evidence. If a PDF is converted to text, images, or JSON, the converted artifacts must reference the original file and the sandbox operation that produced them.
+
+The application should expose sandbox operation history in the frontend when it is relevant to an accounting decision, extraction result, or manual review item.
 
 ## Multi-Model AI Verification
 
@@ -814,6 +851,7 @@ Audit log entries should include:
 - AI run reference if AI initiated.
 - Integration run reference if provider initiated.
 - Source document reference if document-derived.
+- Cloudflare Sandbox operation reference if file-derived.
 - Actor attribution snapshot.
 - Request or job correlation ID if available.
 - Timestamp.
@@ -835,6 +873,7 @@ Auditable actions include:
 - AI provider response receipt.
 - AI consensus pass creation.
 - AI consensus finalization.
+- Cloudflare Sandbox file upload, download, command execution, file read, file write, and derived artifact creation.
 - User profile attribution snapshot updates.
 
 Audit logs and history records must be surfaced in the frontend wherever they help explain current financial state. A user reviewing a transaction, document, vendor, close period, or AI decision should be able to inspect the relevant timeline without needing database access.
@@ -903,6 +942,8 @@ The implementation should expect domain models similar to the following. Exact n
 - AiModelResult.
 - AiConsensusRun.
 - AiConsensusAttempt.
+- SandboxOperation.
+- SandboxArtifact.
 - ManualReviewItem.
 - IntegrationConnection.
 - IntegrationSyncRun.
@@ -921,20 +962,21 @@ Priority order:
 
 1. Team-scoped foundation with users, teams, team switching, and authorization.
 2. Immutable audit, event history, actor attribution snapshots, and no-hard-delete record retention.
-3. Team-owned chart of accounts with starter accounts.
-4. First-party vendor model and external vendor mappings.
-5. Bank transaction import foundation with at least one direct provider, Stripe Financial Connections, or manual seed/import path.
-6. Email receipt and invoice ingestion, starting with Outlook and designed for Google/Gmail.
-7. Laravel AI SDK based extraction for receipts and invoices.
-8. AI-assisted transaction categorization using historical consistency.
-9. Immutable categorization suggestion and assignment history.
-10. Receipt-to-transaction matching.
-11. Manual review queue.
-12. Reconciliation and close period workflow.
-13. Stripe import for contacts, invoices, fees, payouts, and matching.
-14. Ramp, Brex, Mercury, Stripe Financial Connections, and provider-specific vendor sync behavior.
-15. Vendor integration opportunity tracking.
-16. AWS invoice retrieval driver.
+3. Cloudflare Sandbox boundary for unknown file download, upload, inspection, transformation, and derived artifact creation.
+4. Team-owned chart of accounts with starter accounts.
+5. First-party vendor model and external vendor mappings.
+6. Bank transaction import foundation with at least one direct provider, Stripe Financial Connections, or manual seed/import path.
+7. Email receipt and invoice ingestion, starting with Outlook and designed for Google/Gmail.
+8. Laravel AI SDK based extraction for receipts and invoices.
+9. AI-assisted transaction categorization using historical consistency.
+10. Immutable categorization suggestion and assignment history.
+11. Receipt-to-transaction matching.
+12. Manual review queue.
+13. Reconciliation and close period workflow.
+14. Stripe import for contacts, invoices, fees, payouts, and matching.
+15. Ramp, Brex, Mercury, Stripe Financial Connections, and provider-specific vendor sync behavior.
+16. Vendor integration opportunity tracking.
+17. AWS invoice retrieval driver.
 
 ## Explicit Non-Goals for Early Versions
 
@@ -960,6 +1002,7 @@ The platform is successful when a team can:
 - Connect email providers, starting with Outlook and later Google/Gmail.
 - Import bank feed transactions.
 - Import or detect receipts and invoices.
+- Process unknown files only through Cloudflare Sandbox with full operation and artifact history.
 - Extract receipt and invoice details with the Laravel AI SDK.
 - Run multi-model verification for important AI extraction and categorization.
 - Preserve every AI input, output, consensus attempt, and final AI-assisted decision.
