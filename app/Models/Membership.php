@@ -8,6 +8,26 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
+/**
+ * @property int $id
+ * @property int $team_id
+ * @property int $user_id
+ * @property TeamRole $role
+ * @property \Carbon\CarbonImmutable|null $created_at
+ * @property \Carbon\CarbonImmutable|null $updated_at
+ * @property-read \App\Models\Team|null $team
+ * @property-read \App\Models\User $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Membership newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Membership newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Membership query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Membership whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Membership whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Membership whereRole($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Membership whereTeamId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Membership whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Membership whereUserId($value)
+ * @mixin \Eloquent
+ */
 #[Fillable(['team_id', 'user_id', 'role'])]
 class Membership extends Pivot
 {
