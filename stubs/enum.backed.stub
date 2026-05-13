@@ -2,7 +2,9 @@
 
 namespace {{ namespace }};
 
+use App\Traits\EnumToArray;
+
 enum {{ class }}: {{ type }}
 {
-    //
+    use EnumToArray;
 }

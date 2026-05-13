@@ -2,7 +2,11 @@
 
 namespace {{ namespace }};
 
-enum {{ class }}
+use App\Traits\EnumToArray;
+use Spatie\TypeScriptTransformer\Attributes\TypeScript;
+
+#[TypeScript]
+enum {{ class }}: string
 {
-    //
+    use EnumToArray;
 }
