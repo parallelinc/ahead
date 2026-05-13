@@ -2,7 +2,7 @@
 
 ## Product Intent
 
-Build an production-quality accounting platform that acts as the source of truth for bookkeeping, receipt collection, transaction categorization, vendor normalization, reconciliation, and book closing.
+Build a production-quality accounting platform that acts as the source of truth for bookkeeping, receipt collection, transaction categorization, vendor normalization, reconciliation, and book closing.
 
 The product is conceptually a focused custom version of Xero, but only for the workflows required to close books accurately and consistently. It should not attempt to become a full general-ledger, payroll, tax filing, inventory, or enterprise ERP system unless those capabilities are required for book closing.
 
@@ -18,8 +18,74 @@ This application must centralize those inputs, normalize them into first-party e
 - AI must assist with extraction, matching, categorization, and anomaly detection, but uncertain or conflicting results must enter a manual review workflow.
 - AI categorization must optimize for consistency over novelty. Similar vendors and similar transactions should be categorized the same way unless a human explicitly overrides the decision.
 - Human overrides must be durable and become future categorization signals.
-- Every automated accounting decision must be explainable, auditable, and reversible.
+- Every automated accounting decision must be explainable, auditable, reversible, and backed by immutable history.
+- Auditability, chain of custody, record retention, and attribution are the highest-priority requirements in the system. This is a financial application and must be designed for IRS-grade record keeping from the beginning.
+- No accounting-relevant record, decision, source document, AI run, integration event, user action, or state transition may be hard-deleted. Records may be voided, archived, superseded, or marked deleted, but the historical database record must remain.
 - The system must be designed like a production SaaS application even if the first user is internal only.
+
+## Compliance, Chain of Custody, and Immutable History
+
+The platform must treat auditability as the primary product requirement. Every meaningful event must be recorded in the database with enough detail to reconstruct what happened, when it happened, who or what caused it, what data was used, and what changed as a result.
+
+The system must maintain chain of custody for:
+
+- Source emails.
+- Source attachments.
+- Uploaded documents.
+- Provider-imported documents.
+- Provider-imported transactions.
+- Provider raw payloads.
+- AI inputs.
+- AI outputs.
+- AI consensus attempts.
+- Human review actions.
+- Categorization changes.
+- Vendor mapping changes.
+- Receipt and invoice matching changes.
+- Transfer pairing changes.
+- Close period changes.
+- External sync attempts and downstream provider updates.
+
+The system must use append-only event or history records for accounting decisions. Mutable summary columns may exist for query performance and UI convenience, but they must never be the only source of truth for a decision.
+
+For example, a bank transaction must not only have a single mutable `chart_account_id` field that gets overwritten. Categorization must be represented by a history of assignments, suggestions, approvals, overrides, voids, and effective-current state. The UI must be able to show that a transaction was originally categorized as subscriptions, later changed to travel, who changed it, when they changed it, and why.
+
+Historical records must support:
+
+- Team ownership.
+- Entity type and entity ID.
+- Event type.
+- Event sequence or version.
+- Previous value.
+- New value.
+- Effective current flag if applicable.
+- Reason or explanation.
+- Source, such as human, AI, integration, system rule, import, or backfill.
+- Actor attribution.
+- Related AI run if applicable.
+- Related integration sync run if applicable.
+- Related source document if applicable.
+- Created timestamp.
+- Superseded, voided, or reversed timestamp if applicable.
+
+Actor attribution must be durable even if a user later changes or deletes their account.
+
+Human-attributed records must store:
+
+- Nullable `user_id`.
+- Actor display name snapshot.
+- Actor email snapshot.
+- Actor profile photo URL or storage reference snapshot if available.
+- Actor role or membership context if relevant.
+- Actor team membership ID if available.
+
+If a user is deleted, historical records must not cascade delete. The `user_id` may become null, but the denormalized actor attribution must remain so the UI can still show who performed the action.
+
+If a user updates their name, email, or profile photo, the system needs a deliberate mechanism to update denormalized current-display attribution fields on historical records that still reference that user. This must be done without deleting or obscuring the original audit event payload. If the product needs both "who the user is now" and "what their profile looked like at the time of action", store both current-display attribution and action-time attribution.
+
+Hard deletes are not allowed for financial records. For user-requested deletion, account records may be deactivated, anonymized where legally appropriate, or detached from live authentication, but accounting audit records must remain intact.
+
+Every frontend screen that shows an accounting decision should be able to surface the relevant history, including prior values, current value, actor attribution, AI attribution, integration attribution, timestamps, and source evidence.
 
 ## Mandatory AI Implementation Requirement
 
@@ -66,6 +132,14 @@ At minimum, comparison must include:
 - Confidence score.
 
 If models materially disagree on required fields, the record must enter manual review. The application must store each model's raw structured output, confidence, provider, model name, prompt or prompt version, input file references, and final selected result.
+
+Every AI call must be persisted as an auditable run. The system must store the exact AI input payload sent through the Laravel AI SDK, including prompts, messages, structured instructions, tool configuration, file references, document hashes, extracted text included in the request, provider, model, model parameters, and application prompt version. For large files, the database may store immutable storage references and content hashes rather than duplicating binary bytes, but the system must be able to reconstruct what the AI provider received.
+
+Every AI response must be persisted, including raw provider response, parsed structured output, validation errors, confidence values, token usage if available, finish reason, latency, provider request IDs if available, and any safety or refusal metadata returned by the provider.
+
+Consensus workflows must preserve every pass. If the first pass fails to reach agreement and the system performs a second pass, tie-breaker pass, adjudication pass, or human-assisted pass, that later run must be stored as a new historical AI run linked to the earlier runs. Never replace the first-pass input or output with the second-pass result.
+
+The frontend must be able to surface AI provenance for any AI-assisted field, including which provider and model produced the suggestion, what inputs were used, what other models said, whether consensus was reached, and whether a human accepted or overrode the result.
 
 The system must distinguish between:
 
@@ -140,7 +214,7 @@ The system must preserve historical categorization even if an account is later r
 
 The application must define its own first-party vendor entity. This entity is the canonical vendor identity used for reporting, categorization, receipt matching, and spend aggregation.
 
-External vendor names from Mercury, Ramp, Brex, Stripe, Plaid, email receipts, OCR, invoice PDFs, and other integrations must map into first-party vendors.
+External vendor names from direct bank APIs, Stripe Financial Connections, Mercury, Ramp, Brex, Stripe, email receipts, OCR, invoice PDFs, and other integrations must map into first-party vendors.
 
 Example:
 
@@ -188,7 +262,7 @@ Each external system may expose its own vendor, merchant, customer, counterparty
 External vendor mappings should support:
 
 - Team ownership.
-- Integration source, such as Ramp, Brex, Mercury, Stripe, Plaid, Outlook, or manual import.
+- Integration source, such as direct bank API, Stripe Financial Connections, Ramp, Brex, Mercury, Stripe, Outlook, Google, another email provider, or manual import.
 - External vendor ID if available.
 - External display name.
 - External normalized name if available.
@@ -206,15 +280,21 @@ If an external provider does not support vendor updates, the application should 
 
 The platform must ingest financial activity from multiple sources and normalize it into team-owned bank feed transactions.
 
-Initial required sources:
+Banking integrations should support two strategies:
+
+- Direct provider APIs when a bank, card platform, or financial provider exposes a useful API.
+- Stripe Financial Connections for broader bank feed coverage when a direct integration is not available or not worth building.
+
+Initial direct API targets are based on current usage, but the architecture must not be locked to those providers:
 
 - Mercury.
 - Ramp.
 - Brex.
 - Stripe.
-- Plaid as a fallback or aggregator option.
 
-The system should investigate direct APIs for Mercury, Ramp, and Brex before defaulting to Plaid. If a direct API provides richer metadata, better receipt support, cardholder data, vendor records, or more reliable transaction IDs, direct integration should be preferred.
+Stripe Financial Connections replaces Plaid as the preferred aggregator-style bank connection strategy. Do not plan or implement Plaid unless it is explicitly reintroduced later.
+
+The system should investigate direct APIs for specific providers before defaulting to Stripe Financial Connections. If a direct API provides richer metadata, better receipt support, cardholder data, vendor records, writable vendor records, or more reliable transaction IDs, direct integration should be preferred. If a provider does not have a worthwhile direct API, Stripe Financial Connections should be used for account and transaction feeds.
 
 Bank connections must support:
 
@@ -265,23 +345,26 @@ Bank feed transactions must support:
 - Linked receipt.
 - Linked invoice.
 - Linked transfer counterpart transaction.
-- Suggested chart of accounts entry.
-- Final chart of accounts entry.
+- Current categorization summary derived from immutable categorization history.
+- Current suggested chart of accounts summary derived from AI and rule suggestion history.
 - AI confidence.
 - Review status.
 - Reconciliation status.
 - Close period.
 - Raw provider payload.
 
+Bank transactions must not rely on mutable chart-of-account columns as the sole record of categorization. The authoritative categorization record must be an append-only assignment and suggestion history that can show every prior category, every proposed category, every accepted category, every override, every actor, every AI run, and every timestamp.
+
 The same real-world transaction may arrive through multiple sources, such as Stripe payout data and bank deposit data. The system must be able to link related records without duplicating income or fees.
 
-## Outlook Receipt and Invoice Ingestion
+## Email Receipt and Invoice Ingestion
 
-The application must connect to Outlook and scan for receipts, invoices, payment confirmations, and other accounting-relevant documents.
+The application must connect to email providers and scan for receipts, invoices, payment confirmations, and other accounting-relevant documents. Outlook should be the first email provider implemented, but the domain model and ingestion pipeline must also support Google/Gmail and future providers.
 
-Outlook ingestion must support:
+Email ingestion must support:
 
 - Team-scoped mailbox connections.
+- Provider-specific drivers, starting with Outlook and later Google/Gmail.
 - OAuth-based authorization.
 - Incremental sync using message IDs, delta tokens, timestamps, or equivalent provider cursors.
 - Email sender, recipients, subject, body, received timestamp, and attachment metadata.
@@ -404,6 +487,27 @@ Categorization outputs must include:
 
 Users must be able to override suggested categorization. Overrides must be stored as training signals for future categorization in that team.
 
+Categorization must be modeled as auditable history, not as a single overwritten value. The system should distinguish between suggestions, assignments, approvals, overrides, reversals, and current effective categorization.
+
+Categorization history records must support:
+
+- Team ownership.
+- Bank transaction.
+- Receipt or invoice line item if categorizing at line-item level.
+- Suggested or assigned chart of accounts entry.
+- Previous effective chart of accounts entry if any.
+- New effective chart of accounts entry if approved or overridden.
+- Source, such as AI, rule, integration, import, or human.
+- Actor attribution for human changes.
+- AI run attribution for AI suggestions.
+- Similar historical records used as evidence.
+- Explanation.
+- Confidence.
+- Effective current flag.
+- Superseded or reversed timestamp.
+
+The frontend must be able to show categorization lineage. If a transaction was categorized as subscriptions and then changed to travel, both states must be visible with attribution, timestamps, and reasoning.
+
 ## Manual Review Queue
 
 The product must include a manual review queue for anything that cannot be safely automated.
@@ -460,7 +564,8 @@ Transfers may occur between:
 - Mercury accounts.
 - Ramp payment accounts.
 - Brex payment accounts.
-- Bank accounts connected through Plaid.
+- Bank accounts connected through Stripe Financial Connections.
+- Bank accounts connected through other direct bank APIs.
 - Stripe payout clearing accounts and operating bank accounts.
 - Other internal accounts.
 
@@ -553,11 +658,12 @@ Each driver must declare capability flags, such as:
 Initial drivers to plan for:
 
 - Outlook.
+- Google/Gmail.
 - Mercury.
 - Ramp.
 - Brex.
 - Stripe.
-- Plaid.
+- Stripe Financial Connections.
 - AWS billing or invoicing.
 
 Vendor-specific integrations, such as AWS invoice retrieval, should use the same driver architecture when possible.
@@ -609,8 +715,8 @@ Documents represent original source files and extracted accounting artifacts.
 
 Documents must be team-scoped and may originate from:
 
-- Outlook email attachments.
-- Outlook email bodies.
+- Email attachments from Outlook, Google/Gmail, or future providers.
+- Email bodies from Outlook, Google/Gmail, or future providers.
 - Manual uploads.
 - Stripe invoice PDFs.
 - Provider APIs.
@@ -692,7 +798,7 @@ Reports must use first-party vendors, first-party chart of accounts entries, and
 
 ## Auditability
 
-The system must maintain an audit trail for accounting-relevant actions.
+The system must maintain an audit trail for every platform action that can affect financial records, source evidence, reconciliation state, user attribution, integration state, or AI-derived decisions. Auditability is not optional and must not be deferred.
 
 Audit log entries should include:
 
@@ -707,6 +813,9 @@ Audit log entries should include:
 - Reason.
 - AI run reference if AI initiated.
 - Integration run reference if provider initiated.
+- Source document reference if document-derived.
+- Actor attribution snapshot.
+- Request or job correlation ID if available.
 - Timestamp.
 
 Auditable actions include:
@@ -722,6 +831,13 @@ Auditable actions include:
 - Close period lock and unlock actions.
 - External sync pushes.
 - AI suggestion acceptance or rejection.
+- AI input creation.
+- AI provider response receipt.
+- AI consensus pass creation.
+- AI consensus finalization.
+- User profile attribution snapshot updates.
+
+Audit logs and history records must be surfaced in the frontend wherever they help explain current financial state. A user reviewing a transaction, document, vendor, close period, or AI decision should be able to inspect the relevant timeline without needing database access.
 
 ## Data Import, Sync, and Idempotency
 
@@ -778,14 +894,21 @@ The implementation should expect domain models similar to the following. Exact n
 - Invoice.
 - InvoiceLineItem.
 - TransactionMatch.
+- TransactionMatchHistory.
 - CategorizationSuggestion.
+- CategorizationAssignment.
+- CategorizationHistory.
 - CategorizationRule.
 - AiRun.
 - AiModelResult.
+- AiConsensusRun.
+- AiConsensusAttempt.
 - ManualReviewItem.
 - IntegrationConnection.
 - IntegrationSyncRun.
 - ClosePeriod.
+- EntityEvent.
+- ActorSnapshot.
 - AuditLogEntry.
 
 Every accounting entity above must be team-scoped unless there is a specific, documented reason otherwise.
@@ -797,19 +920,21 @@ The first usable version should focus on closing books, not broad accounting com
 Priority order:
 
 1. Team-scoped foundation with users, teams, team switching, and authorization.
-2. Team-owned chart of accounts with starter accounts.
-3. First-party vendor model and external vendor mappings.
-4. Bank transaction import foundation with at least one provider or manual seed/import path.
-5. Outlook receipt and invoice ingestion.
-6. Laravel AI SDK based extraction for receipts and invoices.
-7. AI-assisted transaction categorization using historical consistency.
-8. Receipt-to-transaction matching.
-9. Manual review queue.
-10. Reconciliation and close period workflow.
-11. Stripe import for contacts, invoices, fees, payouts, and matching.
-12. Ramp, Brex, Mercury, Plaid, and provider-specific vendor sync behavior.
-13. Vendor integration opportunity tracking.
-14. AWS invoice retrieval driver.
+2. Immutable audit, event history, actor attribution snapshots, and no-hard-delete record retention.
+3. Team-owned chart of accounts with starter accounts.
+4. First-party vendor model and external vendor mappings.
+5. Bank transaction import foundation with at least one direct provider, Stripe Financial Connections, or manual seed/import path.
+6. Email receipt and invoice ingestion, starting with Outlook and designed for Google/Gmail.
+7. Laravel AI SDK based extraction for receipts and invoices.
+8. AI-assisted transaction categorization using historical consistency.
+9. Immutable categorization suggestion and assignment history.
+10. Receipt-to-transaction matching.
+11. Manual review queue.
+12. Reconciliation and close period workflow.
+13. Stripe import for contacts, invoices, fees, payouts, and matching.
+14. Ramp, Brex, Mercury, Stripe Financial Connections, and provider-specific vendor sync behavior.
+15. Vendor integration opportunity tracking.
+16. AWS invoice retrieval driver.
 
 ## Explicit Non-Goals for Early Versions
 
@@ -832,13 +957,15 @@ These can be reconsidered only if they directly support closing books.
 The platform is successful when a team can:
 
 - Connect financial sources.
-- Connect Outlook.
+- Connect email providers, starting with Outlook and later Google/Gmail.
 - Import bank feed transactions.
 - Import or detect receipts and invoices.
 - Extract receipt and invoice details with the Laravel AI SDK.
 - Run multi-model verification for important AI extraction and categorization.
+- Preserve every AI input, output, consensus attempt, and final AI-assisted decision.
 - Normalize external vendor names into first-party vendors.
 - Categorize transactions consistently based on prior approved treatment.
+- Show complete categorization history, including prior categories, current category, actor attribution, AI attribution, and timestamps.
 - Match receipts and invoices to transactions.
 - Identify missing receipts.
 - Identify transfers.
