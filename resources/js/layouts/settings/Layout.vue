@@ -1,4 +1,5 @@
 <script setup lang="ts">
+    import { Link } from '@inertiajs/vue3';
     import Heading from '@/components/Heading.vue';
     import { Button } from '@/components/ui/button';
     import { Separator } from '@/components/ui/separator';
@@ -9,7 +10,6 @@
     import { edit as editSecurity } from '@/routes/security';
     import { index as teams } from '@/routes/teams';
     import type { NavItem } from '@/types';
-    import { Link } from '@inertiajs/vue3';
 
     const sidebarNavItems: NavItem[] = [
         {

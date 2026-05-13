@@ -1,4 +1,6 @@
 <script setup lang="ts">
+    import { Form } from '@inertiajs/vue3';
+    import { ref } from 'vue';
     import InputError from '@/components/InputError.vue';
     import { Button } from '@/components/ui/button';
     import {
@@ -14,8 +16,6 @@
     import { Input } from '@/components/ui/input';
     import { Label } from '@/components/ui/label';
     import { store } from '@/routes/teams';
-    import { Form } from '@inertiajs/vue3';
-    import { ref } from 'vue';
 
     const open = ref(false);
     const formKey = ref(0);

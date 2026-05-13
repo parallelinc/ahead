@@ -15,7 +15,7 @@ use Laravel\Telescope\TelescopeApplicationServiceProvider;
 
 final class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
 {
-    private const MAX_TAG_LENGTH = 250;
+    private const int MAX_TAG_LENGTH = 250;
 
     /**
      * Register any application services.
@@ -24,7 +24,7 @@ final class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
     {
         $this->hideSensitiveRequestDetails();
 
-        Telescope::filter(function (IncomingEntry $entry) {
+        Telescope::filter(function (IncomingEntry $entry): bool {
             try {
                 $content = $entry->content;
 
@@ -55,8 +55,8 @@ final class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
                         return false;
                     }
                 }
-            } catch (Exception $e) {
-                Log::error('Telescope filtering error!', ['message' => $e->getMessage(), 'content' => $entry->content, 'error' => $e]);
+            } catch (Exception $exception) {
+                Log::error('Telescope filtering error!', ['message' => $exception->getMessage(), 'content' => $entry->content, 'error' => $exception]);
 
                 return false;
             }
@@ -64,7 +64,7 @@ final class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
             return true;
         });
 
-        Telescope::tag(function (IncomingEntry $entry) {
+        Telescope::tag(function (IncomingEntry $entry): array {
             try {
                 $content = $entry->content;
 
@@ -108,8 +108,8 @@ final class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
                 };
 
                 return array_map($tag, $tags);
-            } catch (Exception $e) {
-                Log::error('Telescope tagging error!', ['message' => $e->getMessage(), 'content' => $entry->content, 'error' => $e]);
+            } catch (Exception $exception) {
+                Log::error('Telescope tagging error!', ['message' => $exception->getMessage(), 'content' => $entry->content, 'error' => $exception]);
 
                 return [];
             }

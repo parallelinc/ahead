@@ -1,4 +1,7 @@
 <script setup lang="ts">
+    import { Link, usePage } from '@inertiajs/vue3';
+    import { BookOpen, FolderGit2, LayoutGrid } from 'lucide-vue-next';
+    import { computed } from 'vue';
     import AppLogo from '@/components/AppLogo.vue';
     import NavFooter from '@/components/NavFooter.vue';
     import NavMain from '@/components/NavMain.vue';
@@ -15,9 +18,6 @@
     } from '@/components/ui/sidebar';
     import { dashboard } from '@/routes';
     import type { NavItem } from '@/types';
-    import { Link, usePage } from '@inertiajs/vue3';
-    import { BookOpen, FolderGit2, LayoutGrid } from 'lucide-vue-next';
-    import { computed } from 'vue';
 
     const page = usePage();
 

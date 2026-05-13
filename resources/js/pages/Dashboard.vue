@@ -1,8 +1,8 @@
 <script setup lang="ts">
+    import { Head } from '@inertiajs/vue3';
     import PlaceholderPattern from '@/components/PlaceholderPattern.vue';
     import { dashboard } from '@/routes';
     import type { Team } from '@/types';
-    import { Head } from '@inertiajs/vue3';
 
     defineOptions({
         layout: (props: { currentTeam?: Team | null }) => ({

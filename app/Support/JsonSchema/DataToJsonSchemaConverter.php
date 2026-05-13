@@ -35,11 +35,11 @@ use Spatie\LaravelData\Support\Validation\ValidationRule;
  * Applies validation attributes (Min, Max, Enum, Regex) to the schema when present.
  * Uses outputMappedName for property keys so generated schema matches API (e.g. snake_case).
  */
-final class DataToJsonSchemaConverter
+final readonly class DataToJsonSchemaConverter
 {
     public function __construct(
-        private readonly DataConfig $dataConfig,
-        private readonly JsonSchema $schema,
+        private DataConfig $dataConfig,
+        private JsonSchema $schema,
     ) {}
 
     /**
@@ -75,7 +75,11 @@ final class DataToJsonSchemaConverter
         $properties = [];
 
         foreach ($dataClass->properties as $dataProperty) {
-            if ($dataProperty->computed || $dataProperty->hidden) {
+            if ($dataProperty->computed) {
+                continue;
+            }
+
+            if ($dataProperty->hidden) {
                 continue;
             }
 
@@ -246,9 +250,11 @@ final class DataToJsonSchemaConverter
         if ($enum instanceof ExternalReference) {
             return null;
         }
+
         if (is_string($enum)) {
             return $enum;
         }
+
         if ($enum instanceof IlluminateEnumRule) {
             $innerRef = new ReflectionClass($enum);
             $typeProp = $innerRef->getProperty('type');

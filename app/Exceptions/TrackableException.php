@@ -19,7 +19,7 @@ final class TrackableException extends Exception
         private readonly ExceptionType $type,
         ?string $messageOverride = null,
     ) {
-        parent::__construct($messageOverride ?? $type->message() ?? 'An error occurred.', 0, null);
+        parent::__construct($messageOverride ?? $type->message() ?? 'An error occurred.');
     }
 
     /**

@@ -77,7 +77,7 @@ final class AppServiceProvider extends ServiceProvider
 
     private function registerFlashMacro(): void
     {
-        RedirectResponse::macro('flash', function (string $message, ?string $description = null, ?string $type = 'success', ?string $position = 'bottom-center') {
+        RedirectResponse::macro('flash', function (string $message, ?string $description = null, ?string $type = 'success', ?string $position = 'bottom-center'): object {
             $flashData = new FlashData($message, $description, $type, $position);
 
             Inertia::flash('toast', $flashData);
@@ -90,7 +90,7 @@ final class AppServiceProvider extends ServiceProvider
     {
         Scramble::configure()
             ->expose(false)
-            ->withDocumentTransformers(function (OpenApi $openApi) {
+            ->withDocumentTransformers(function (OpenApi $openApi): void {
                 /** @var SecurityScheme $securityScheme */
                 $securityScheme = SecurityScheme::http('bearer', 'JWT');
                 $openApi->secure($securityScheme);

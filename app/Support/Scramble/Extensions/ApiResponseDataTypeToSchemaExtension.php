@@ -70,7 +70,7 @@ final class ApiResponseDataTypeToSchemaExtension implements StaticMethodReturnTy
             return $type;
         }
 
-        if ($type instanceof Union && collect($type->types)->contains(fn (Type $t) => $t instanceof NullType)) {
+        if ($type instanceof Union && collect($type->types)->contains(fn (Type $t): bool => $t instanceof NullType)) {
             return $type;
         }
 

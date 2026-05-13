@@ -1,4 +1,6 @@
 <script setup lang="ts">
+    import { Head, Link } from '@inertiajs/vue3';
+    import { Eye, Pencil, Plus } from 'lucide-vue-next';
     import CreateTeamModal from '@/components/CreateTeamModal.vue';
     import Heading from '@/components/Heading.vue';
     import { Badge } from '@/components/ui/badge';
@@ -6,8 +8,6 @@
     import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
     import { edit, index } from '@/routes/teams';
     import type { Team } from '@/types';
-    import { Head, Link } from '@inertiajs/vue3';
-    import { Eye, Pencil, Plus } from 'lucide-vue-next';
 
     type Props = {
         teams: Team[];

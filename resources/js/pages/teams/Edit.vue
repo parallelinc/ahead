@@ -1,4 +1,7 @@
 <script setup lang="ts">
+    import { Form, Head, router } from '@inertiajs/vue3';
+    import { ChevronDown, Mail, UserPlus, X } from 'lucide-vue-next';
+    import { computed, ref } from 'vue';
     import CancelInvitationModal from '@/components/CancelInvitationModal.vue';
     import DeleteTeamModal from '@/components/DeleteTeamModal.vue';
     import Heading from '@/components/Heading.vue';
@@ -21,9 +24,6 @@
     import { edit, index, update } from '@/routes/teams';
     import { update as updateMember } from '@/routes/teams/members';
     import type { RoleOption, Team, TeamInvitation, TeamMember, TeamPermissions } from '@/types';
-    import { Form, Head, router } from '@inertiajs/vue3';
-    import { ChevronDown, Mail, UserPlus, X } from 'lucide-vue-next';
-    import { computed, ref } from 'vue';
 
     type Props = {
         team: Team;

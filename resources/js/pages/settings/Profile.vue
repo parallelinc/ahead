@@ -1,4 +1,6 @@
 <script setup lang="ts">
+    import { Form, Head, Link, usePage } from '@inertiajs/vue3';
+    import { computed } from 'vue';
     import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
     import DeleteUser from '@/components/DeleteUser.vue';
     import Heading from '@/components/Heading.vue';
@@ -8,8 +10,6 @@
     import { Label } from '@/components/ui/label';
     import { edit } from '@/routes/profile';
     import { send } from '@/routes/verification';
-    import { Form, Head, Link, usePage } from '@inertiajs/vue3';
-    import { computed } from 'vue';
 
     type Props = {
         mustVerifyEmail: boolean;

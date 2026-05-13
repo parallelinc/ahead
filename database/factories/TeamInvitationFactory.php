@@ -37,7 +37,7 @@ final class TeamInvitationFactory extends Factory
      */
     public function accepted(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn (array $attributes): array => [
             'accepted_at' => now(),
         ]);
     }
@@ -47,7 +47,7 @@ final class TeamInvitationFactory extends Factory
      */
     public function expired(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn (array $attributes): array => [
             'expires_at' => now()->subDay(),
         ]);
     }
@@ -57,7 +57,7 @@ final class TeamInvitationFactory extends Factory
      */
     public function expiresIn(int $value, string $unit = 'days'): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn (array $attributes): array => [
             'expires_at' => now()->add($unit, $value),
         ]);
     }

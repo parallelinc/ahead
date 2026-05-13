@@ -37,7 +37,7 @@ final class DeleteTeamRequest extends FormRequest
     public function after(): array
     {
         return [
-            function (Validator $validator) {
+            function (Validator $validator): void {
                 $team = $this->route('team');
 
                 if ($this->input('name') !== $team->name) {

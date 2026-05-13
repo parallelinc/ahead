@@ -6,7 +6,10 @@ namespace App\Support\Scramble\Extensions;
 
 use Dedoc\Scramble\Extensions\OperationExtension;
 use Dedoc\Scramble\Support\Generator\Operation;
+use Dedoc\Scramble\Support\Generator\Reference;
+use Dedoc\Scramble\Support\Generator\Response;
 use Dedoc\Scramble\Support\RouteInfo;
+use Dedoc\Scramble\Support\Type\FunctionType;
 use Dedoc\Scramble\Support\Type\KeyedArrayType;
 use Dedoc\Scramble\Support\Type\Type;
 
@@ -26,7 +29,7 @@ final class ApiResponseDataInferredResponseExtension extends OperationExtension
     public function handle(Operation $operation, RouteInfo $routeInfo): void
     {
         $methodType = $routeInfo->getMethodType();
-        if (! $methodType) {
+        if (! $methodType instanceof FunctionType) {
             return;
         }
 
@@ -49,14 +52,14 @@ final class ApiResponseDataInferredResponseExtension extends OperationExtension
         }
 
         $response = $this->openApiTransformer->toResponse($typeToUse);
-        if (! $response) {
+        if ($response === null) {
             return;
         }
 
         // Replace any previously generated 200 response (whether it was inline or a $ref).
         $operation->responses = array_values(array_filter(
             $operation->responses ?? [],
-            fn ($r) => $this->resolveResponseCode($r) !== 200,
+            fn (Reference|Response $r): bool => $this->resolveResponseCode($r) !== 200,
         ));
 
         $operation->addResponse($response);
@@ -66,7 +69,7 @@ final class ApiResponseDataInferredResponseExtension extends OperationExtension
     {
         $keys = collect($type->items)
             ->map(fn ($item) => $item->key)
-            ->filter(fn ($k) => is_string($k))
+            ->filter(fn ($k): bool => is_string($k))
             ->values()
             ->all();
 
