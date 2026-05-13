@@ -20,6 +20,7 @@
         "laravel/horizon": "^5.46",
         "laravel/mcp": "^0.7.0",
         "laravel/nightwatch": "^1.26.1",
+        "laravel/reverb": "^1.0",
         "laravel/telescope": "^5.20",
         "laravel/tinker": "^3.0.2",
         "laravel/wayfinder": "^0.1.20",
