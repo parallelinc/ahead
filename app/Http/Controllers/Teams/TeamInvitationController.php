@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Teams;
 
 use App\Enums\TeamRole;
@@ -15,7 +17,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 
-class TeamInvitationController extends Controller
+final class TeamInvitationController extends Controller
 {
     /**
      * Store a newly created invitation.

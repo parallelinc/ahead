@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\TeamRole;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,10 +16,11 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
  * @property int $team_id
  * @property int $user_id
  * @property TeamRole $role
- * @property \Carbon\CarbonImmutable|null $created_at
- * @property \Carbon\CarbonImmutable|null $updated_at
- * @property-read \App\Models\Team|null $team
- * @property-read \App\Models\User $user
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
+ * @property-read Team|null $team
+ * @property-read User $user
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Membership newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Membership newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Membership query()
@@ -26,11 +30,19 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Membership whereTeamId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Membership whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Membership whereUserId($value)
+ *
  * @mixin \Eloquent
  */
 #[Fillable(['team_id', 'user_id', 'role'])]
-class Membership extends Pivot
+final class Membership extends Pivot
 {
+    /**
+     * Indicates if the IDs are auto-incrementing.
+     *
+     * @var bool
+     */
+    public $incrementing = true;
+
     /**
      * The table associated with the model.
      *
@@ -39,11 +51,16 @@ class Membership extends Pivot
     protected $table = 'team_members';
 
     /**
-     * Indicates if the IDs are auto-incrementing.
+     * Get the attributes that should be cast.
      *
-     * @var bool
+     * @return array<string, string>
      */
-    public $incrementing = true;
+    protected function casts(): array
+    {
+        return [
+            'role' => TeamRole::class,
+        ];
+    }
 
     /**
      * Get the team that the membership belongs to.
@@ -63,17 +80,5 @@ class Membership extends Pivot
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'role' => TeamRole::class,
-        ];
     }
 }

@@ -59,6 +59,11 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereTwoFactorSecret($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereUpdatedAt($value)
  *
+ * @property-read bool|null $notifications_exists
+ * @property-read bool|null $owned_teams_exists
+ * @property-read bool|null $team_memberships_exists
+ * @property-read bool|null $teams_exists
+ *
  * @mixin \Eloquent
  */
 #[Fillable(['name', 'email', 'password', 'current_team_id'])]

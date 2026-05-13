@@ -48,6 +48,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Team withTrashed(bool $withTrashed = true)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Team withoutTrashed()
  *
+ * @property-read bool|null $invitations_exists
+ * @property-read bool|null $members_exists
+ * @property-read bool|null $memberships_exists
+ *
  * @mixin \Eloquent
  */
 #[Fillable(['name', 'slug', 'is_personal'])]

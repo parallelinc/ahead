@@ -6,7 +6,10 @@ namespace App\Support\JsonSchema;
 
 use BackedEnum;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\JsonSchema\Types\IntegerType;
+use Illuminate\JsonSchema\Types\NumberType;
 use Illuminate\JsonSchema\Types\ObjectType;
+use Illuminate\JsonSchema\Types\StringType;
 use Illuminate\JsonSchema\Types\Type;
 use Illuminate\Validation\Rules\Enum as IlluminateEnumRule;
 use ReflectionClass;
@@ -200,9 +203,9 @@ final class DataToJsonSchemaConverter
             if ($rule instanceof Min) {
                 $minVal = $rule->parameters()[0] ?? null;
                 if ($minVal !== null && ! $minVal instanceof ExternalReference && is_int($minVal)
-                    && ($type instanceof \Illuminate\JsonSchema\Types\StringType
-                        || $type instanceof \Illuminate\JsonSchema\Types\IntegerType
-                        || $type instanceof \Illuminate\JsonSchema\Types\NumberType)) {
+                    && ($type instanceof StringType
+                        || $type instanceof IntegerType
+                        || $type instanceof NumberType)) {
                     $type->min($minVal);
                 }
             }
@@ -210,9 +213,9 @@ final class DataToJsonSchemaConverter
             if ($rule instanceof Max) {
                 $maxVal = $rule->parameters()[0] ?? null;
                 if ($maxVal !== null && ! $maxVal instanceof ExternalReference && is_int($maxVal)
-                    && ($type instanceof \Illuminate\JsonSchema\Types\StringType
-                        || $type instanceof \Illuminate\JsonSchema\Types\IntegerType
-                        || $type instanceof \Illuminate\JsonSchema\Types\NumberType)) {
+                    && ($type instanceof StringType
+                        || $type instanceof IntegerType
+                        || $type instanceof NumberType)) {
                     $type->max($maxVal);
                 }
             }
@@ -227,7 +230,7 @@ final class DataToJsonSchemaConverter
             if ($rule instanceof Regex) {
                 $pattern = $rule->parameters()[0] ?? null;
                 if ($pattern !== null && ! $pattern instanceof ExternalReference && is_string($pattern)
-                    && $type instanceof \Illuminate\JsonSchema\Types\StringType) {
+                    && $type instanceof StringType) {
                     $type->pattern($pattern);
                 }
             }

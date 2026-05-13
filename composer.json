@@ -11,8 +11,8 @@
     "require": {
         "php": "^8.4",
         "brick/money": "^0.11.2",
-        "dedoc/scramble-pro": "^0.8.8",
         "dedoc/scramble": ">=0.13.22",
+        "dedoc/scramble-pro": "^0.8.8",
         "grazulex/laravel-apiroute": ">=2.1",
         "inertiajs/inertia-laravel": "^3.1",
         "laravel/fortify": "^1.37",
@@ -20,6 +20,7 @@
         "laravel/horizon": "^5.46",
         "laravel/mcp": "^0.7.0",
         "laravel/nightwatch": "^1.26.1",
+        "laravel/telescope": "^5.20",
         "laravel/tinker": "^3.0.2",
         "laravel/wayfinder": "^0.1.20",
         "league/flysystem-aws-s3-v3": "^3.32",
@@ -51,7 +52,7 @@
         "pestphp/pest-plugin-laravel": "^4.1",
         "pestphp/pest-plugin-type-coverage": ">=4.0.4",
         "rector/rector": ">=2.4.3",
-        "spatie/laravel-typescript-transformer": "^3.2"
+        "spatie/laravel-typescript-transformer": "^2.5.2"
     },
     "autoload": {
         "psr-4": {
