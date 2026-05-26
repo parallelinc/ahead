@@ -1,0 +1,6 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "cmds": {
+    "install": "install-php-extensions pcntl sockets && composer install --optimize-autoloader --no-scripts --no-interaction"
+  }
+}
