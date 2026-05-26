@@ -3,14 +3,15 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "vite build",
-        "build:ssr": "vite build && vite build --ssr",
+        "build": "bun run wayfinder:generate && vite build",
+        "build:ssr": "bun run wayfinder:generate && vite build && vite build --ssr",
         "dev": "vite",
         "format": "prettier --write resources/",
         "format:check": "prettier --check resources/",
         "lint": "eslint . --fix",
         "lint:check": "eslint .",
-        "type:check": "vue-tsc --noEmit"
+        "type:check": "bun run wayfinder:generate && vue-tsc --noEmit",
+        "wayfinder:generate": "php artisan route:clear --no-interaction && php artisan wayfinder:generate --with-form --no-interaction"
     },
     "devDependencies": {
         "@eslint/js": "^9.19.0",
