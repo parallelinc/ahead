@@ -64,7 +64,7 @@
     );
 
     const updateMemberRole = (member: TeamMember, newRole: string) => {
-        router.visit(updateMember([props.team.slug, member.id]), {
+        router.visit(updateMember([props.team.slug, member.id.toString()]), {
             data: { role: newRole },
             preserveScroll: true,
         });
