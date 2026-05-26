@@ -1,6 +1,19 @@
 {
   "$schema": "https://schema.railpack.com",
-  "php": {
-    "extensions": ["pcntl", "sockets"]
+  "steps": {
+    "extensions": {
+      "commands": [
+        "...",
+        {
+          "cmd": "install-php-extensions pcntl sockets",
+          "customName": "Install required PHP extensions"
+        }
+      ]
+    },
+    "install:composer": {
+      "variables": {
+        "COMPOSER_ALLOW_SUPERUSER": "1"
+      }
+    }
   }
 }
