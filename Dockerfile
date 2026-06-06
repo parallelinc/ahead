@@ -2,36 +2,30 @@
 
 FROM composer:2 AS vendor
 
+ARG COMPOSER_AUTH
+
 WORKDIR /app
 
 COPY composer.json composer.lock ./
 
-RUN --mount=type=secret,id=composer_auth,required=false \
-	if [ -f /run/secrets/composer_auth ]; then \
-		export COMPOSER_AUTH="$(cat /run/secrets/composer_auth)"; \
-	fi \
-	&& composer install \
-		--no-dev \
-		--no-interaction \
-		--prefer-dist \
-		--optimize-autoloader \
-		--no-scripts \
-		--ignore-platform-req=ext-pcntl \
-		--ignore-platform-req=ext-sockets
+RUN COMPOSER_AUTH="${COMPOSER_AUTH}" composer install \
+	--no-dev \
+	--no-interaction \
+	--prefer-dist \
+	--optimize-autoloader \
+	--no-scripts \
+	--ignore-platform-req=ext-pcntl \
+	--ignore-platform-req=ext-sockets
 
 COPY . .
 
-RUN --mount=type=secret,id=composer_auth,required=false \
-	if [ -f /run/secrets/composer_auth ]; then \
-		export COMPOSER_AUTH="$(cat /run/secrets/composer_auth)"; \
-	fi \
-	&& composer install \
-		--no-dev \
-		--no-interaction \
-		--prefer-dist \
-		--optimize-autoloader \
-		--ignore-platform-req=ext-pcntl \
-		--ignore-platform-req=ext-sockets
+RUN COMPOSER_AUTH="${COMPOSER_AUTH}" composer install \
+	--no-dev \
+	--no-interaction \
+	--prefer-dist \
+	--optimize-autoloader \
+	--ignore-platform-req=ext-pcntl \
+	--ignore-platform-req=ext-sockets
 
 FROM php:8.4-cli-bookworm AS assets
 
