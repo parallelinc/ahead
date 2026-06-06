@@ -1,0 +1,32 @@
+{
+	auto_https off
+	admin off
+}
+
+:3000 {
+	root * /var/www/html/public
+
+	encode gzip zstd
+
+	@notStatic {
+		not path /build/* /favicon.ico /robots.txt
+		file {
+			try_files {path} {path}/ /index.php?{query}
+		}
+	}
+	rewrite @notStatic /index.php?{query}
+
+	php_fastcgi 127.0.0.1:9000
+
+	file_server
+
+	header {
+		X-Frame-Options "SAMEORIGIN"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	@hidden path */.*
+	respond @hidden 404
+}
