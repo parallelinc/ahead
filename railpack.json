@@ -8,12 +8,32 @@
           "cmd": "install-php-extensions pcntl sockets",
           "customName": "Install required PHP extensions"
         }
+      ],
+      "deployOutputs": [
+        {
+          "include": [
+            "."
+          ],
+          "exclude": [
+            "public/index.php"
+          ]
+        }
       ]
     },
     "install:composer": {
       "variables": {
         "COMPOSER_ALLOW_SUPERUSER": "1"
-      }
+      },
+      "deployOutputs": [
+        {
+          "include": [
+            "."
+          ],
+          "exclude": [
+            "public/index.php"
+          ]
+        }
+      ]
     }
   }
 }
