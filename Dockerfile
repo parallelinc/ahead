@@ -45,35 +45,23 @@ RUN APP_ENV=production \
 	bun install --frozen-lockfile \
 	&& APP_ENV=production \
 	APP_KEY=base64:dGVtcG9yYXJ5a2V5Zm9yZG9ja2VyYnVpbGRvbmx5Cg== \
-	bun run build
+	bun run build \
+	&& rm -rf node_modules
 
 FROM php:8.4-fpm-alpine AS production
 
-RUN apk add --no-cache \
-	curl \
-	fcgi \
-	git \
-	icu-dev \
-	libpng-dev \
-	libxml2-dev \
-	libzip-dev \
-	linux-headers \
-	postgresql-dev \
-	zip \
-	$PHPIZE_DEPS \
-	&& docker-php-ext-configure intl \
-	&& docker-php-ext-install -j"$(nproc)" \
+ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
+
+RUN apk add --no-cache curl fcgi \
+	&& IPE_KEEP_ENV=1 install-php-extensions \
 		bcmath \
 		intl \
 		opcache \
 		pcntl \
 		pdo_pgsql \
+		redis \
 		sockets \
-		zip \
-	&& pecl install redis \
-	&& docker-php-ext-enable redis \
-	&& apk del --no-cache $PHPIZE_DEPS postgresql-dev \
-	&& rm -rf /tmp/pear /var/cache/apk/*
+		zip
 
 COPY --from=caddy:2-alpine /usr/bin/caddy /usr/bin/caddy
 
